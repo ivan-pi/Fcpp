@@ -34,8 +34,6 @@ constexpr CFI_type_t type(){ return CFI_type_other; }
 template<>
 constexpr CFI_type_t type<char>(){ return CFI_type_char; }
 template<>
-constexpr CFI_type_t type<bool>(){ return CFI_type_Bool; } 
-template<>
 constexpr CFI_type_t type<float>(){ return CFI_type_float; } 
 template<>
 constexpr CFI_type_t type<double>(){ return CFI_type_double; } 
@@ -78,7 +76,7 @@ enum class attr : CFI_attribute_t {
 /**
  *  C++-descriptor class encapsulating Fortran array
  */
-template<typename T, int rank_ = 1, attr attr_ = cfi::attr::other>
+template<typename T, int rank_ = 1, attr attr_ = Fcpp::attr::other>
 class cdesc_t {
 public:
 
@@ -130,14 +128,14 @@ public:
     // Constructor for static array
     template<std::size_t N>
     cdesc_t(T (&ref)[N]) : cdesc_t(ref,N) {
-        static_assert(attr_ == cfi::attr::other);
+        static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from static array");
     }
 
     // Constructor from std::vector
     cdesc_t(std::vector<T> &buffer) : cdesc_t(buffer.data(),buffer.size()) {
-        static_assert(attr_ == cfi::attr::other);
+        static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from std::vector");
     }
@@ -145,14 +143,14 @@ public:
     // Constructor from std::array
     template<std::size_t N>
     cdesc_t(std::array<T,N> &buffer) : cdesc_t(buffer.data(),N) {
-        static_assert(attr_ == cfi::attr::other);
+        static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from std::array");
     }
 
 #if __cpp_lib_span
     cdesc_t( std::span<T> buffer ) : cdesc_t(buffer.data(),buffer.size()) {
-        static_assert(attr_ == cfi::attr::other);
+        static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from std::span.");
     }

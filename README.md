@@ -1,8 +1,8 @@
-# cxxfi
+# Fcpp
 
-Header-only library for enhanced C++/Fortran interoperability
+Seamless interoperability between C++ containers and Fortran arrays
 
-This library provides two classes: `cdesc` and `cdesc_ptr`. These classes
+We provides two classes: `cdesc` and `cdesc_ptr`. These classes
 act as adaptors between C++ and Fortran, helping to re-establish type and 
 attribute safety when moving between languages.
 
@@ -11,12 +11,7 @@ manipulating collections of items, including:
 - iterators
 - range-based for loops
 - subscript operators
-By doing so, they also provide you with the opportunity to use algorithms 
-from the C++ Standard Template Library.
-
-Conversion routines and casts give you the ability to easily convert your 
-Fortran array into a handful of domain-specific libraries such as [Eigen](),
-[Armadillo](), and [Blaze]().
+This way you can use algorithms from C++ Standard Template Library.
 
 ## `cdesc`
 
@@ -31,6 +26,9 @@ to pass to Fortran routine marked with `bind(c)`. An example of what this may
 look like is:
 
 ```cpp
+#include "Fcpp.h"
+using namespace Fcpp;
+
 extern "C" void process_floats_in_fortran(CFI_cdesc_t * /* a */ );
 // ...
 std::vector<float> a(21);
@@ -47,39 +45,27 @@ The purpose of this class is to help implement procedures in C++, which are
 designed to be called from Fortran. In such cases you will be passing a pointer
 to a C descriptor across the language barrier.
 
-When you need to perform some operations on Fortran arrays, but the implementation
-would come together easier in C++, use the `cdesc_ptr` class.
+When you need to perform some operations on Fortran arrays, but the implementation would be easier to perform in C++, use the `cdesc_ptr` class.
 
 ```fortran
 interface
-   subroutine process_ints_in_cxx(b) bind(c,name="process_ints_in_cpp")
+   subroutine process_ints(b) bind(c,name="process_ints")
       use, intrinsic :: iso_c_binding, only: c_int
       integer(c_int) :: b(:) ! <- could be non-contiguous
    end subroutine
 end interface
 
-integer, allocatable :: b(:)
-
-allocate(b(21))
-call process_ints_in_cxx(b)
+integer :: b(21)
+call process_ints(b)
 ```
-
-## Decision table
-
-* `cdesc`       used for wrapping objects created in C++
-* `cdesc_ptr`   used for wrapping dummy arguments, typically originating Fortran objects
-
-* `cdesc`       used for passing C++ objects to routines implemented in Fortran
-* `cdesc_ptr`   used for passing Fortran objects to routines implemented in C++
-
-* `ftn_vector`  a std::vector-like container based on Fortran allocatable arrays
-
 
 ## Calling a Fortran routine from C++
 
 ```fortran
-real(c_double) function dot(a,b) bind(c,name='f_dot')
+! A wrapper of the Fortran dot_product routine
+function dot(a,b) bind(c,name='f_dot')
 real(c_double), intent(in) :: a(:), b(:)
+real(c_double) :: dot
 intrinsic :: dot_product
 dot = dot_product(a,b)
 end function
@@ -89,10 +75,10 @@ end function
 #include <array>
 #include <iostream>
 
-#include "cxxfi.hpp"
-using namespace cxxfi;
+#include "Fcpp.h"
+using namespace Fcpp;
 
-extern "C" [[nodiscard]] 
+extern "C" [[nodiscard]]
 double f_dot(CFI_cdesc_t *fa, CFI_cdesc_t *fb);
 
 int main() {
@@ -127,17 +113,16 @@ Purposes of the adapter class template:
 - conversions to C++ reference classes such as std::span
 - easily modify the allocation status
 
-
 ```cpp
 #include <numeric>
 
-#include "cxxfi.hpp"
-using namespace cxxfi;
+#include "Fcpp.h"
+using namespace Fcpp;
 
 extern "C" {
     
 void fill_increasing(CFI_cdesc_t* fa, int start) {
-   cdesc_ref<int,1> a(fa);
+   cdesc_ptr<int,1> a(fa);
    std::iota(a.begin(),a.end(),start);
 }
 
@@ -158,32 +143,12 @@ end interface
 integer(c_int) :: a(5), b(6)
 
 call fill_increasing(a,-2)
-
 call fill_increasing(b(1::2),0)
 
 write(*,*) a
 
 end program
 ```
-
-## References
-
-- https://github.com/fortran-lang/stdlib/issues/325
-- https://fortran-lang.discourse.group/t/issues-interfacing-between-c-and-fortran/456/14
-- https://fortran-lang.discourse.group/t/fastest-sorting-for-a-specific-genre-of-unordered-numbers/3217/9?u=ivanpribec
-
-## Custom converters with the help of `cdesc`
-
-In the C++ ecosystem one can find several domain-specific container libraries.
-For (dense) linear algebra the most popular ones are:
-- Eigen
-- Armadillo
-- Blaze
-
-All three of these libraries provide means to work also with pre-existing C 
-buffers, meaning they can easily be used also as views of existing Fortran 
-arrays. Let's have a closer look at interfacing with Eigen.
-
 
 
 
