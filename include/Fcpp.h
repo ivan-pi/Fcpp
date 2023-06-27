@@ -108,7 +108,7 @@ public:
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from pointer and length");
 
-        CFI_index_t extents[1] = { static_cast<CFI_index_t>(n) };
+        CFI_index_t extents[rank_] = { static_cast<CFI_index_t>(n) };
 
         [[maybe_unused]] int status = CFI_establish(
             this->get(),
@@ -155,12 +155,6 @@ public:
     }
 #endif
 
-    bool is_contiguous() {
-        return CFI_is_contiguous(this->get()) > 0;
-    }
-
-    // Implicit cast to C-descriptor pointer
-    operator CFI_cdesc_t* () { return this->get(); }
 
     // Implicit cast to std::span (only for rank-1 arrays, 
     // otherwise use .flatten())
@@ -198,6 +192,13 @@ public:
         assert(0 <= dim && dim < rank_);
         return this->get()->dim[dim].extent;
     }
+
+    bool is_contiguous() {
+        return CFI_is_contiguous(this->get()) > 0;
+    }
+
+    // Implicit cast to C-descriptor pointer
+    operator CFI_cdesc_t* () { return this->get(); }
 
     // FIXME: We need a proper iterator to handle the non-contiguous case
     //        when the stride memory is larger than the element size.
@@ -265,9 +266,9 @@ public:
     // Element length in bytes
     std::size_t elem_len() const { return this->get()->elem_len; }
 
-    inline std::size_t extent(int dim) const {
-        assert(0 <= dim && dim < rank_);
-        return this->get()->dim[dim].extent;
+    inline std::size_t extent(int d) const {
+        assert(0 <= d && d < rank_);
+        return this->get()->dim[d].extent;
     }
 
     template<int d>
@@ -278,6 +279,8 @@ public:
 
     // Constructor
     cdesc_ptr(CFI_cdesc_t *ptr) : ptr_(ptr) {
+
+        // Runtime assertions
         assert(ptr_->type == type());
         assert(ptr_->rank == rank());
         assert(ptr_->attribute == (CFI_attribute_t) attr_);
@@ -292,6 +295,22 @@ public:
 
     bool is_contiguous() {
         return CFI_is_contiguous(this->get()) > 0;
+    }
+
+    constexpr pointer data() const { 
+        return static_cast<pointer>(ptr_->base_addr); 
+    }
+
+    // Array subscript operators
+    T& operator[](std::size_t idx) {
+        static_assert(rank_ == 1,
+            "Rank must be 1 to use array subscript operator");
+            return *(data() + idx);
+        }
+    const T& operator[](std::size_t idx) const {
+        static_assert(rank_ == 1,
+            "Rank must be 1 to use array subscript operator");
+        return *(data() + idx);
     }
 
 private:

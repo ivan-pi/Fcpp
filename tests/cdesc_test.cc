@@ -82,7 +82,9 @@ TEST(cdesc_class, fromSpan) {
 TEST(cdesc_class, subscript1D) {
 
   std::array<int,7> a = {0,1,2,3,4,5,6};
-  cdesc<int> fa(a);
+  cdesc<int> fa_(a);
+
+  cdesc_ptr<int,1> fa(fa_.get()); 
 
   for (int i = 0; i < fa.extent(0); ++i) {
     EXPECT_EQ(i, fa[i]);
