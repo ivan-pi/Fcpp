@@ -77,7 +77,7 @@ enum class attr : CFI_attribute_t {
  *  C++-descriptor class encapsulating Fortran array
  */
 template<typename T, int rank_ = 1, attr attr_ = Fcpp::attr::other>
-class cdesc_t {
+class cdesc {
 public:
 
     static_assert(rank_ >= 0, "Rank must be non-negative");
@@ -102,9 +102,8 @@ public:
     // Element length in bytes
     std::size_t elem_len() const { return this->get()->elem_len; }
 
-
     // Base constructor for assumed-shape arrays
-    cdesc_t(T* ptr, size_type n) : ptr_(this->get_descptr()) {
+    cdesc(T* ptr, size_type n) {
 
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from pointer and length");
@@ -127,14 +126,14 @@ public:
 
     // Constructor for static array
     template<std::size_t N>
-    cdesc_t(T (&ref)[N]) : cdesc_t(ref,N) {
+    cdesc(T (&ref)[N]) : cdesc(ref,N) {
         static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from static array");
     }
 
     // Constructor from std::vector
-    cdesc_t(std::vector<T> &buffer) : cdesc_t(buffer.data(),buffer.size()) {
+    cdesc(std::vector<T> &buffer) : cdesc(buffer.data(),buffer.size()) {
         static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from std::vector");
@@ -142,14 +141,14 @@ public:
 
     // Constructor from std::array
     template<std::size_t N>
-    cdesc_t(std::array<T,N> &buffer) : cdesc_t(buffer.data(),N) {
+    cdesc(std::array<T,N> &buffer) : cdesc(buffer.data(),N) {
         static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from std::array");
     }
 
 #if __cpp_lib_span
-    cdesc_t( std::span<T> buffer ) : cdesc_t(buffer.data(),buffer.size()) {
+    cdesc(std::span<T> buffer) : cdesc(buffer.data(),buffer.size()) {
         static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ == 1,
             "Rank must be equal to 1 to construct descriptor from std::span.");
@@ -193,28 +192,15 @@ public:
 
     // Return pointer to the underlying descriptor
     // (the name get() is inspired by the C++ smart pointer classes)
-    constexpr auto get() const { return ptr_; }
+    constexpr auto get() const { return get_descptr(); }
 
     inline std::size_t extent(int dim) const {
         assert(0 <= dim && dim < rank_);
-        return ptr_->dim[dim].extent;
+        return this->get()->dim[dim].extent;
     }
 
     // FIXME: We need a proper iterator to handle the non-contiguous case
     //        when the stride memory is larger than the element size.
-
-    //
-    // Element access
-    //
-
-    constexpr T& front() const {
-        return begin();
-    }
-
-    //constexpr T& back() const {
-    //    return ;
-    //}
-
 
     // Array subscript operators
     T& operator[](std::size_t idx) {
@@ -240,34 +226,83 @@ private:
 
     using attribute_type = typename std::underlying_type<attr>::type;
 
-    // Return base address of the Fortran array
-    // cast to the correct type
-
-    constexpr auto get_descptr() {
-        return reinterpret_cast<CFI_cdesc_t *>(&desc_);
+    constexpr auto get_descptr() const {
+        return (CFI_cdesc_t *) &desc_;
     } 
 
 private:
     // Descriptor containing the actual data
     CFI_CDESC_T(rank_) desc_;
-    // Pointer to opaque descriptor object
+};
+
+template<typename T, int rank_, attr attr_ = Fcpp::attr::other>
+class cdesc_ptr {
+public:
+
+    static_assert(rank_ >= 0, "Rank must be non-negative");
+    static_assert(rank_ <= CFI_MAX_RANK, 
+        "The maximum allowed rank is 15");
+
+    using value_type = T;
+    using size_type = std::size_t;
+
+    using reference = T&;
+    using const_reference = const T&;
+
+    using pointer = T*;
+    using const_pointer = const T*;
+
+    constexpr CFI_type_t type() const { return Fcpp_impl_::type<T>(); };
+    constexpr CFI_rank_t rank() const { return rank_; };
+
+    // Return pointer to the underlying descriptor
+    // (the name get() is inspired by the C++ smart pointer classes)
+    constexpr auto get() const { return get_descptr(); }
+
+    // Version of ISO_Fortran_binding.h 
+    constexpr int version() const { return this->get()->version; }
+
+    // Element length in bytes
+    std::size_t elem_len() const { return this->get()->elem_len; }
+
+    inline std::size_t extent(int dim) const {
+        assert(0 <= dim && dim < rank_);
+        return this->get()->dim[dim].extent;
+    }
+
+    template<int d>
+    inline std::size_t extent() const {
+        static_assert(0 <= d && d < rank_);
+        return this->get()->dim[d].extent;
+    }
+
+    // Constructor
+    cdesc_ptr(CFI_cdesc_t *ptr) : ptr_(ptr) {
+        assert(ptr_->type == type());
+        assert(ptr_->rank == rank());
+        assert(ptr_->attribute == (CFI_attribute_t) attr_);
+    }
+
+    // Assumed-size constructor
+    //cdesc_ptr(CFI_cdesc_t *ptr, int n) {
+    //    assert(ptr_->rank == rank_);
+    //    assert(ptr_->extents[rank_-1] == -1);
+    //    // TODO: check array is really assumed size
+    //}
+
+    bool is_contiguous() {
+        return CFI_is_contiguous(this->get()) > 0;
+    }
+
+private:
+
+    using attribute_type = typename std::underlying_type<attr>::type;
+
+    constexpr auto get_descptr() const {
+        return ptr_;
+    } 
+
     CFI_cdesc_t *ptr_{nullptr};
-};
-
-template<typename T, int rank_>
-class AllocatableArray {
-public:
-    // TODO
-private:
-    CFI_cdesc_t *ptr{nullptr};
-};
-
-template<typename T, int rank_>
-class PointerArray {
-public:
-    // TODO
-private:
-    CFI_cdesc_t *ptr{nullptr};
 };
 
 // Both pointer array, and allocatable array

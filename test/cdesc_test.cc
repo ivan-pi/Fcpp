@@ -7,10 +7,10 @@
 #include "Fcpp.h"
 using namespace Fcpp;
 
-TEST(cdesc, fromPointer) {
+TEST(cdesc_class, fromPointer) {
 
   float *a = new float[3];
-  cdesc_t fa(a,3);
+  cdesc fa(a,3);
 
   EXPECT_EQ(fa.rank(),1);
   EXPECT_EQ(fa.extent(0),3);
@@ -22,10 +22,10 @@ TEST(cdesc, fromPointer) {
 }
 
 
-TEST(cdesc, fromVector) {
+TEST(cdesc_class, fromVector) {
 
   std::vector<float> a(5);
-  cdesc_t<float> fa(a);
+  cdesc<float> fa(a);
 
   EXPECT_EQ(fa.rank(),1);
   EXPECT_EQ(fa.extent(0),5);
@@ -35,10 +35,10 @@ TEST(cdesc, fromVector) {
 
 }
 
-TEST(cdesc, fromArray) {
+TEST(cdesc_class, fromArray) {
 
   std::array<float,7> a;
-  cdesc_t<float> fa(a);
+  cdesc<float> fa(a);
 
   EXPECT_EQ(fa.rank(),1);
   EXPECT_EQ(fa.extent(0),7);
@@ -48,10 +48,10 @@ TEST(cdesc, fromArray) {
 
 }
 
-TEST(cdesc, fromStaticArray) {
+TEST(cdesc_class, fromStaticArray) {
 
   float a[9];
-  cdesc_t<float> fa(a);
+  cdesc<float> fa(a);
 
   EXPECT_EQ(fa.rank(),1);
   EXPECT_EQ(fa.extent(0),9);
@@ -62,12 +62,12 @@ TEST(cdesc, fromStaticArray) {
 }
 
 #if __cpp_lib_span
-TEST(cdesc, fromSpan) {
+TEST(cdesc_class, fromSpan) {
 
   double *a = new double[6];
   std::span sa{a,6};
 
-  cdesc_t<double> fa(sa);
+  cdesc<double> fa(sa);
 
   EXPECT_EQ(fa.rank(),1);
   EXPECT_EQ(fa.extent(0),6);
@@ -79,10 +79,10 @@ TEST(cdesc, fromSpan) {
 }
 #endif
 
-TEST(cdesc, subscript1D) {
+TEST(cdesc_class, subscript1D) {
 
   std::array<int,7> a = {0,1,2,3,4,5,6};
-  cdesc_t<int> fa(a);
+  cdesc<int> fa(a);
 
   for (int i = 0; i < fa.extent(0); ++i) {
     EXPECT_EQ(i, fa[i]);
@@ -95,10 +95,10 @@ TEST(cdesc, subscript1D) {
 
 }
 
-TEST(cdesc, rangeBasedFor) {
+TEST(cdesc_class, rangeBasedFor) {
 
   std::array<int,7> a = {0,1,2,3,4,5,6};
-  cdesc_t<int> fa(a);
+  cdesc<int> fa(a);
 
   int i = 0;
   for (auto item : fa) {
@@ -120,14 +120,14 @@ TEST(cdesc, rangeBasedFor) {
 
 }
 
-TEST(cdesc, iteratorsSortInPlace) {
+TEST(cdesc_class, iteratorsSortInPlace) {
 
   std::vector<double> a;
   a.emplace_back(3.0);
   a.emplace_back(2.0);
   a.emplace_back(1.0);
 
-  cdesc_t fp(a);
+  cdesc fp(a);
 
   std::sort(fp.begin(),fp.end());
 
@@ -137,7 +137,7 @@ TEST(cdesc, iteratorsSortInPlace) {
 
 }
 
-TEST(cdesc, iteratorsIndirectSort) {
+TEST(cdesc_class, iteratorsIndirectSort) {
 
   // Sort the indexes in p based upon the values in a
 
@@ -147,7 +147,7 @@ TEST(cdesc, iteratorsIndirectSort) {
   a.emplace_back(1.0);
 
   std::vector<int> p = {0,1,2};
-  cdesc_t fp(p);
+  cdesc fp(p);
   
   auto compare = [&a](const int& il, const int& ir) {
     return a[il] < a[ir];
@@ -161,10 +161,10 @@ TEST(cdesc, iteratorsIndirectSort) {
 
 }
 
-TEST(cdesc, minElementUsingConstantIterators) {
+TEST(cdesc_class, minElementUsingConstantIterators) {
 
   std::vector<double> v = {3.,2.,1.,4.};
-  cdesc_t fv(v);
+  cdesc fv(v);
   
   auto min_el = std::min_element(fv.cbegin(),fv.cend()); 
   EXPECT_EQ(1.0,*min_el);
@@ -175,10 +175,10 @@ TEST(cdesc, minElementUsingConstantIterators) {
 // Returns 1 if all elements of b are equal to 2, or 0 otherwise.
 extern "C" int alltwo(CFI_cdesc_t *b);
 
-TEST(cdesc, implicitCastCdesc) {
+TEST(cdesc_class, implicitCastCdesc) {
 
   std::vector<int> b(10,2);
-  cdesc_t fb(b);
+  cdesc fb(b);
 
   // Implicit cast on assignment
   CFI_cdesc_t *b_ = fb;
@@ -190,10 +190,10 @@ TEST(cdesc, implicitCastCdesc) {
 }
 
 #if __cpp_lib_span
-TEST(cdesc, implicitCastSpan) {
+TEST(cdesc_class, implicitCastSpan) {
 
   std::vector<int> b(10);
-  cdesc_t fb(b);
+  cdesc fb(b);
 
   // Implicit cast in copy constructor of span
   std::span sb(fb);
