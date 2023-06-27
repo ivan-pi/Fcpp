@@ -4,8 +4,8 @@
 
 #include <gtest/gtest.h>
 
-#include "cxxfi.hpp"
-using namespace cfi;
+#include "Fcpp.h"
+using namespace Fcpp;
 
 TEST(cdesc, fromPointer) {
 

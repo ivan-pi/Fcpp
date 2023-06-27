@@ -15,9 +15,9 @@
 // for a peak into the internals of a particular vendor:
 // https://github.com/gcc-mirror/gcc/blob/master/libgfortran/ISO_Fortran_binding.h
 
-namespace cfi {
+namespace Fcpp {
 
-namespace cfi_internal {
+namespace Fcpp_impl_ {
 
 /**
  * Function templates to convert a template argument 
@@ -63,7 +63,7 @@ template<>
 constexpr CFI_type_t type<void*>(){ return CFI_type_cptr; }
 
 
-} // namespace cfi_internal
+} // namespace Fcpp_internal
 
 /**
  *  Enumerator class for attributes
@@ -95,7 +95,7 @@ public:
     using pointer = T*;
     using const_pointer = const T*;
 
-    constexpr CFI_type_t type() const { return cfi_internal::type<T>(); };
+    constexpr CFI_type_t type() const { return Fcpp_impl_::type<T>(); };
     constexpr CFI_rank_t rank() const { return rank_; };
 
     // Version of ISO_Fortran_binding.h 
@@ -292,4 +292,4 @@ private:
 //
 
 
-} // namespace cfi
+} // namespace Fcpp

@@ -1,12 +1,9 @@
-cmake_minimum_required(VERSION 3.12.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16.0)
 
-project(cxxfi VERSION 0.1.0 LANGUAGES CXX C Fortran)
+project(Fcpp VERSION 0.0.0 LANGUAGES CXX C Fortran)
 
 # FIXME:
 set(CMAKE_CXX_STANDARD 20)
-
-# FIXME: Eigen should be optional
-find_package (Eigen3 3.4 REQUIRED NO_MODULE)
 
 #
 # googletest
@@ -20,18 +17,16 @@ FetchContent_MakeAvailable(googletest)
 
 #include_directories(/usr/local/Cellar/eigen/3.4.0_1/include/eigen3/)
 
-add_library(cxxfi INTERFACE)
-target_include_directories(cxxfi INTERFACE include/)
-target_link_libraries(cxxfi INTERFACE Eigen3::Eigen)
-
-target_compile_features(cxxfi INTERFACE cxx_std_20)
+add_library(Fcpp INTERFACE)
+target_include_directories(Fcpp INTERFACE include/)
+target_compile_features(Fcpp INTERFACE cxx_std_20)
 
 #add_executable(main main.cpp dot.f90)
-#target_link_libraries(main cxxfi)
+#target_link_libraries(main Fcpp)
 
 #add_executable(fill fill.f90 fill_increasing.cpp)
 #target_compile_features(fill PUBLIC cxx_std_20)
-#target_link_libraries(fill cxxfi)
+#target_link_libraries(fill Fcpp)
 
 enable_testing()
 
@@ -43,7 +38,7 @@ add_executable(
 
 target_link_libraries(
   cdesc_test
-  cxxfi
+  Fcpp
   GTest::gtest_main
   gfortran
 )
