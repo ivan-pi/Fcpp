@@ -103,12 +103,15 @@ public:
     std::size_t elem_len() const { return this->get()->elem_len; }
 
     // Base constructor for assumed-shape arrays
-    cdesc(T* ptr, size_type n) {
-
-        static_assert(rank_ == 1,
+    template<typename... Exts>
+    cdesc(T* ptr, int n0, Exts&&... exts) {
+        static_assert(sizeof...(exts) >= 0);
+        static_assert(rank_ == sizeof...(exts) + 1,
             "Rank must be equal to 1 to construct descriptor from pointer and length");
 
-        CFI_index_t extents[rank_] = { static_cast<CFI_index_t>(n) };
+        CFI_index_t extents[rank_] = { 
+            static_cast<CFI_index_t>(n0),
+            static_cast<CFI_index_t>(exts)... };
 
         [[maybe_unused]] int status = CFI_establish(
             this->get(),
