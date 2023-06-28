@@ -13,6 +13,9 @@ manipulating collections of items, including:
 - subscript operators
 This way you can use algorithms from C++ Standard Template Library.
 
+:warning: This library is currently at prototype stage. We are working
+on a making a first release soon.
+
 ## `cdesc`
 
 The purpose of this class is to pass native C++ containers such as
