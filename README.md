@@ -3,7 +3,7 @@
 Seamless interoperability between C++ containers and Fortran arrays
 
 We provides two classes: `cdesc` and `cdesc_ptr`. These classes
-act as adaptors between C++ and Fortran, helping to re-establish type and 
+act as adaptors between C++ containers and Fortran arrays, helping to re-establish type, rank and 
 attribute safety when moving between languages.
 
 The classes also offer some of the friendlier C++ semantics for 
@@ -11,7 +11,7 @@ manipulating collections of items, including:
 - iterators
 - range-based for loops
 - subscript operators
-This way you can use algorithms from C++ Standard Template Library.
+This way you can use algorithms from the C++ Standard Template Library.
 
 :warning: This library is currently at prototype stage. We are working
 on a making a first release soon.
