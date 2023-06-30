@@ -11,6 +11,7 @@ manipulating collections of items, including:
 - iterators
 - range-based for loops
 - subscript operators
+
 This way you can use algorithms from the C++ Standard Template Library.
 
 :warning: This library is currently at prototype stage. We are working
