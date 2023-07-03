@@ -5,8 +5,13 @@
 #include <array>
 
 #include <type_traits>
+#include <iterator>
+#include <cstdint>
 
+#if __cpp_lib_span
 #include <span> // C++ 20
+#endif
+
 #include <iostream>
 
 #include <cassert>
@@ -50,9 +55,9 @@ constexpr CFI_type_t type<long long>(){ return CFI_type_long_long; }
 template<>
 constexpr CFI_type_t type<std::size_t>(){ return CFI_type_size_t; }
 template<>
-constexpr CFI_type_t type<std::int8_t>(){ return CFI_type_int8_t; }
+constexpr CFI_type_t type<int8_t>(){ return CFI_type_int8_t; }
 template<>
-constexpr CFI_type_t type<std::int16_t>(){ return CFI_type_int16_t; }
+constexpr CFI_type_t type<int16_t>(){ return CFI_type_int16_t; }
 //template<>
 //constexpr CFI_type_t type<std::int32_t>(){ return CFI_type_int32_t; }
 //template<>
@@ -159,31 +164,10 @@ public:
 #endif
 
 
-    // Implicit cast to std::span (only for rank-1 arrays, 
-    // otherwise use .flatten())
-#if __cpp_lib_span
-    operator std::span<T>() const {
-        static_assert(rank_ == 1,
-            "Rank must be equal to 1 to convert implicitly to std::span");
-        size_type n = this->get()->dim[0].extent;
-        return {this->data(),n};
-    }
-
-    // Return a flattened view of the array.
-    // TODO: handle assumed-size arrays
-    std::span<T> flatten() {
-        size_type nelem = 1;
-        for (int i = 0; i < rank_; ++i) {
-            nelem *= this->get()->dim[i].extent;
-        }
-        return {this->data(),nelem};
-    }
-#endif
-
 #if __cpp_lib_mdspan
-    operator std::mdspan<T,std::dextents<rank_>>() const {
+    cdesc(std::mdspan<T,std::dextents<rank_>,std::layout_left> buffer) {
+        static_assert(attr_ == Fcpp::attr::other);
         static_assert(rank_ > 1, "Rank must be higher than 1 to convert to std::mdspan");
-        return {this->data_handle(), extents... };
     }
 #endif
 
@@ -196,7 +180,7 @@ public:
         return this->get()->dim[dim].extent;
     }
 
-    bool is_contiguous() {
+    bool is_contiguous() const {
         return CFI_is_contiguous(this->get()) > 0;
     }
 
@@ -282,7 +266,6 @@ public:
 
     // Constructor
     cdesc_ptr(CFI_cdesc_t *ptr) : ptr_(ptr) {
-
         // Runtime assertions
         assert(ptr_->type == type());
         assert(ptr_->rank == rank());
@@ -296,55 +279,124 @@ public:
     //    // TODO: check array is really assumed size
     //}
 
-    bool is_contiguous() {
+    bool is_contiguous() const {
         return CFI_is_contiguous(this->get()) > 0;
     }
 
-    constexpr pointer data() const { 
+    constexpr pointer data() const {
+        assert(this->is_contiguous());
         return static_cast<pointer>(ptr_->base_addr); 
     }
 
     // Array subscript operators
+    // TODO: multidimensional-access operator
+    // TODO: make variadic
     T& operator[](std::size_t idx) {
         static_assert(rank_ == 1,
             "Rank must be 1 to use array subscript operator");
-            return *(data() + idx);
+            return *(base_addr() + idx*(stride<0>()/sizeof(T)));
         }
     const T& operator[](std::size_t idx) const {
         static_assert(rank_ == 1,
             "Rank must be 1 to use array subscript operator");
-        return *(data() + idx);
+        return *(base_addr() + idx*(stride<0>()/sizeof(T)));
     }
 
+    struct Iterator {
+        using iterator_category = std::random_access_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = T;
+        using pointer           = T*;
+        using reference         = T&;
+
+        Iterator(pointer ptr, CFI_index_t sm) : ptr_(ptr), stride(sm/sizeof(T)) {}
+
+        reference operator*() const { return *ptr_; }
+        pointer operator->() { return ptr_; }
+        Iterator& operator++() { 
+            ptr_ = ptr_ + stride; 
+            return *this; 
+        }
+        Iterator operator++(int) { 
+            Iterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+        bool operator==(const Iterator& rhs) const {
+            return ptr_ == rhs.ptr_;
+        }
+        bool operator!=(const Iterator& rhs) const {
+            return ptr_ != rhs.ptr_;
+        }
+
+    private:
+        pointer ptr_;
+        const size_t stride;
+    };
+
+    // Iterator support
+    Iterator begin() { 
+        static_assert(rank_ == 1, "Rank must be one to use iterator");
+        return Iterator(base_addr(), this->stride<0>()); 
+    }
+    Iterator end() { 
+        static_assert(rank_ == 1, "Rank must be one to use iterator");
+        std::size_t nbytes = extent<0>()*(stride<0>()/sizeof(T));
+        return Iterator(base_addr() + nbytes, this->stride<0>()); 
+    }    
+
+#if __cpp_lib_span
+    // Implicit cast to std::span (only for rank-1 arrays, 
+    // otherwise use .flatten())
+    //
+    // TODO: compile-time contiguity check
+    operator std::span<T>() const {
+        static_assert(rank_ == 1,
+            "Rank must be equal to 1 to convert implicitly to std::span");
+        assert(this->is_contiguous())
+        size_type n = this->get()->dim[0].extent;
+        return {this->data(),n};
+    }
+    // Return a flattened view of the array.
+    // TODO: handle assumed-size arrays
+    // TODO: compile-time contiguity check
+    std::span<T> flatten() {
+        static_assert(rank_ > 1, "Rank must be higher than 1 to use .flatten()");
+        assert(this->is_contiguous())
+        size_type nelem = 1;
+        for (int i = 0; i < rank_; ++i) {
+            nelem *= this->extent(i);
+        }
+        return {this->data(),nelem};
+    }
+#endif
+
+#if __cpp_lib_mdspan
+    operator std::mdspan<T,std::dextents<rank_>>() const {
+        static_assert(rank_ > 1, "Rank must be higher than 1 to convert to std::mdspan");
+        return {this->data_handle(), extents... };
+    }
+#endif
+
 private:
+
+    template<int d>
+    inline std::size_t stride() const {
+        static_assert(0 <= d && d < rank_);
+        return ptr_->dim[d].sm;
+    }
 
     using attribute_type = typename std::underlying_type<attr>::type;
 
     constexpr auto get_descptr() const {
         return ptr_;
-    } 
+    }
+
+    constexpr auto base_addr() const {
+        return static_cast<T*>(ptr_->base_addr);
+    }
 
     CFI_cdesc_t *ptr_{nullptr};
 };
-
-// Both pointer array, and allocatable array
-// don't work with C++ memory. They
-// can only have two constructors. Either
-// being a new array is created, given the dimensions.
-// Or they are initialized from an existing array
-// of specific rank.
-//
-// Pointer array does not have a destructor. It 
-// must be destroyed by the programmer.
-//
-// Allocatable arrays are de-allocated at exit from the scope.
-// When constructed from dummy argument, they should
-// not be deallocated.
-//
-// Can we detect if something is a dummy argument?
-//
-// Any local instances created, should be destroyed automatically.
-//
-
 
 } // namespace Fcpp

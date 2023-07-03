@@ -14,3 +14,6 @@ target_link_libraries(
 
 include(GoogleTest)
 gtest_discover_tests(cdesc_test)
+
+add_executable(iota_test iota_test.f90 iota.cpp)
+target_link_libraries(iota_test Fcpp)
